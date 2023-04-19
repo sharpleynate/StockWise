@@ -1,0 +1,35 @@
+import alpaca_trade_api as tradeapi
+import pandas as pd
+import numpy as np
+
+# Replace with your own API key and secret from Alpaca
+API_KEY = ''
+API_SECRET = ''
+BASE_URL = 'https://paper-api.alpaca.markets'
+
+api = tradeapi.REST(API_KEY, API_SECRET, base_url=BASE_URL, api_version='v2')
+
+symbol = 'AAPL'  # Replace with the desired stock symbol
+timeframe = '15Min'  # Timeframe for the historical data
+
+# Set the start and end dates to retrieve data since September 1st, 2021 until yesterday's date
+start_date = '2021-09-01'
+end_date = (pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=1)).strftime('%Y-%m-%d')
+
+# Fetch historical data for the stock
+historical_data = api.get_bars(symbol, tradeapi.rest.TimeFrame.Minute, start_date, end_date, adjustment='raw').df
+
+# Calculate moving averages
+short_window = 9
+long_window = 21
+historical_data['short_mavg'] = historical_data['close'].rolling(window=short_window).mean()
+historical_data['long_mavg'] = historical_data['close'].rolling(window=long_window).mean()
+
+# Generate trading signals
+historical_data['signal'] = 0.0
+historical_data['signal'][short_window:] = np.where(historical_data['short_mavg'][short_window:] > historical_data['long_mavg'][short_window:], 1.0, 0.0)
+historical_data['positions'] = historical_data['signal'].diff()
+
+print(historical_data.tail())
+
+# Implement your order execution logic here
